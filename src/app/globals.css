@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply min-h-screen bg-ink-50 text-ink-900 antialiased;
+}
+
+.masonry {
+  column-gap: 1rem;
+}
+
+.masonry-item {
+  break-inside: avoid;
+  margin-bottom: 1rem;
+}
+
+.focus-ring {
+  @apply outline-none ring-2 ring-ink-900/10 ring-offset-2 ring-offset-ink-50;
+}

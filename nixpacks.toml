@@ -1,0 +1,6 @@
+# Nixpacks (Railway default builder)
+# Pin Node 20 LTS. Do not override install/build phases — the Node provider
+# runs npm install + npm run build automatically from package.json.
+
+[variables]
+NIXPACKS_NODE_VERSION = "20"

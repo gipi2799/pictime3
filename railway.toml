@@ -1,0 +1,8 @@
+# Railway config-as-code — https://docs.railway.com/guides/config-as-code
+# Nixpacks builds the app; start runs migrations then the Next.js Node server.
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "npm run start"

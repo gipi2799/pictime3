@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GalleryStatus {
+  DRAFT
+  CLIENT_REVIEWING
+  SELECTIONS_IN
+  DELIVERED
+  ARCHIVED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime  @default(now())
+  galleries    Gallery[]
+}
+
+model Gallery {
+  id                   String         @id @default(cuid())
+  title                String
+  slug                 String         @unique
+  userId               String
+  user                 User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status               GalleryStatus  @default(DRAFT)
+  subtitle             String?
+  clientLabel          String?
+  sectionEyebrow       String         @default("Unforgettable moments")
+  galleryPassword      String?
+  maxSelects           Int?
+  lockAfterSubmit      Boolean        @default(false)
+  allowReopenAfterLock Boolean        @default(true)
+  linkExpiresAt        DateTime?
+  deadline             DateTime?
+  clientSiteBaseUrl    String?
+  photos               Photo[]
+  submissions          GallerySubmission[]
+  createdAt            DateTime       @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Photo {
+  id           String      @id @default(cuid())
+  galleryId    String
+  gallery      Gallery     @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  filename     String
+  originalKey  String
+  thumbKey     String
+  previewKey   String
+  width        Int
+  height       Int
+  sortOrder    Int         @default(0)
+  inAlbum      Boolean     @default(true)
+  favorites    Favorite[]
+  selections   Selection[]
+  createdAt    DateTime    @default(now())
+
+  @@index([galleryId])
+}
+
+model Favorite {
+  id        String @id @default(cuid())
+  photoId   String
+  photo     Photo  @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  visitorId String
+
+  @@unique([photoId, visitorId])
+  @@index([visitorId])
+}
+
+model Selection {
+  id        String @id @default(cuid())
+  photoId   String
+  photo     Photo  @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  visitorId String
+
+  @@unique([photoId, visitorId])
+  @@index([visitorId])
+}
+
+model GallerySubmission {
+  id        String   @id @default(cuid())
+  galleryId String
+  gallery   Gallery  @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  visitorId String
+  name      String?
+  email     String?
+  note      String?
+  photoIds  String
+  createdAt DateTime @default(now())
+
+  @@index([galleryId])
+}
