@@ -1,46 +1,16 @@
-import {
-  GetObjectCommand,
-  PutObjectCommand,
-  S3Client,
-  type GetObjectCommandOutput,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { createReadStream, promises as fs } from "node:fs";
+import path from "node:path";
 import type { Readable } from "node:stream";
 
-function requireEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) {
-    throw new Error(`Missing required environment variable: ${name}`);
+// Local file storage (MVP mode - no S3 required)
+const STORAGE_DIR = path.join(process.cwd(), "public", "uploads");
+
+async function ensureDir(dir: string): Promise<void> {
+  try {
+    await fs.mkdir(dir, { recursive: true });
+  } catch (e) {
+    // Already exists or permission error
   }
-  return v;
-}
-
-let client: S3Client | null = null;
-
-export function getStorageClient(): S3Client {
-  if (client) return client;
-
-  const endpoint = requireEnv("STORAGE_URL").replace(/\/$/, "");
-  const region = process.env.STORAGE_REGION || "auto";
-  const forcePathStyle =
-    process.env.STORAGE_FORCE_PATH_STYLE === "true" ||
-    process.env.STORAGE_FORCE_PATH_STYLE === "1";
-
-  client = new S3Client({
-    region,
-    endpoint,
-    credentials: {
-      accessKeyId: requireEnv("STORAGE_KEY"),
-      secretAccessKey: requireEnv("STORAGE_SECRET"),
-    },
-    forcePathStyle,
-  });
-
-  return client;
-}
-
-export function getBucket(): string {
-  return requireEnv("STORAGE_BUCKET");
 }
 
 export async function putObject(
@@ -48,55 +18,31 @@ export async function putObject(
   body: Buffer,
   contentType: string,
 ): Promise<void> {
-  const c = getStorageClient();
-  await c.send(
-    new PutObjectCommand({
-      Bucket: getBucket(),
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-    }),
-  );
+  const fullPath = path.join(STORAGE_DIR, key);
+  const dir = path.dirname(fullPath);
+  await ensureDir(dir);
+  await fs.writeFile(fullPath, body);
 }
 
 export async function presignedGetUrl(key: string, expiresIn = 3600): Promise<string> {
-  const c = getStorageClient();
-  const command = new GetObjectCommand({
-    Bucket: getBucket(),
-    Key: key,
-  });
-  return getSignedUrl(c, command, { expiresIn });
+  // For local storage, just return a regular URL path
+  // In production with S3, this would be a presigned URL
+  return `/api/files/${encodeURIComponent(key)}`;
 }
 
 export async function getObjectBuffer(key: string): Promise<Buffer> {
-  const out = await getObjectResponse(key);
-  const body = out.Body;
-  if (!body) {
-    throw new Error("Empty object body");
-  }
-  const chunks: Buffer[] = [];
-  for await (const chunk of body as AsyncIterable<Uint8Array>) {
-    chunks.push(Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks);
-}
-
-export async function getObjectResponse(key: string): Promise<GetObjectCommandOutput> {
-  const c = getStorageClient();
-  return c.send(
-    new GetObjectCommand({
-      Bucket: getBucket(),
-      Key: key,
-    }),
-  );
+  const fullPath = path.join(STORAGE_DIR, key);
+  return fs.readFile(fullPath);
 }
 
 /** Node Readable for archiver / streaming downloads */
 export async function getObjectReadable(key: string): Promise<Readable> {
-  const res = await getObjectResponse(key);
-  const body = res.Body;
-  if (!body) {
-    throw new Error("Empty object body");
+  const fullPath = path.join(STORAGE_DIR, key);
+  // Verify file exists before streaming
+  try {
+    await fs.access(fullPath);
+  } catch {
+    throw new Error(`File not found: ${key}`);
   }
-  return body as Readable;
+  return createReadStream(fullPath);
 }
