@@ -1,6 +1,6 @@
 # Deploy on Railway (production MVP)
 
-This app is a **single Node.js process**: `npm run build` then `npm start`. It listens on **`process.env.PORT`** (Railway sets this automatically). The stack is **Next.js 14 (App Router)**, **PostgreSQL** via Prisma, and **S3-compatible storage** for originals, thumbnails, and previews.
+This app is a **single Node.js process**: `npm run build` then `npm start`. It listens on **`process.env.PORT`** (Railway sets this automatically). The stack is **Next.js 14 (App Router)**, **PostgreSQL** via Prisma, and **local file storage** for uploads in `public/uploads/`.
 
 ---
 
@@ -8,7 +8,6 @@ This app is a **single Node.js process**: `npm run build` then `npm start`. It l
 
 - A [Railway](https://railway.app) account
 - A Git repository with this project (or deploy from GitHub)
-- An **S3-compatible bucket** (e.g. [Cloudflare R2](https://developers.cloudflare.com/r2/), AWS S3, [Supabase Storage S3 API](https://supabase.com/docs/guides/storage/s3/authentication), MinIO, etc.)
 
 ### Repo layout for Railway / Nixpacks
 
@@ -41,22 +40,13 @@ Ensure the **web service** has `DATABASE_URL` set (reference variable or paste t
 
 ---
 
-## 4. Object storage (S3-compatible)
+## 4. Storage
 
-Create a bucket and access keys in your provider. Then set these on the **web service**:
+This MVP uses **local file storage** in `public/uploads/`.
 
-| Variable | Description |
-|----------|-------------|
-| `STORAGE_URL` | API endpoint (no trailing slash), e.g. `https://<accountid>.r2.cloudflarestorage.com` |
-| `STORAGE_BUCKET` | Bucket name |
-| `STORAGE_KEY` | Access key ID |
-| `STORAGE_SECRET` | Secret access key |
-| `STORAGE_REGION` | Optional; `auto` is fine for R2; use e.g. `us-east-1` for AWS |
-| `STORAGE_FORCE_PATH_STYLE` | Optional; `true` for many MinIO setups; omit or `false` for R2 / AWS |
+No S3-compatible bucket is required for the MVP. Uploaded images, thumbnails, and previews are stored locally on the server file system.
 
-**Cloudflare R2:** enable the S3 API on the bucket, create an R2 API token, and use the R2 endpoint URL from the dashboard.
-
-**AWS S3:** `STORAGE_URL` can be `https://s3.<region>.amazonaws.com` or the regional endpoint your SDK expects; set `STORAGE_REGION` and usually `STORAGE_FORCE_PATH_STYLE=false`.
+If you later want S3, add `STORAGE_URL`, `STORAGE_BUCKET`, `STORAGE_KEY`, and `STORAGE_SECRET`, and update `src/lib/storage.ts` accordingly.
 
 ---
 
@@ -115,7 +105,7 @@ Creates `admin@test.com` / `123456` and two sample galleries. **Do not** leave t
 3. **Dashboard** → create a gallery → **Upload** images.
 4. Open the **client gallery** link (`/gallery/<slug>`), select images, download single file and ZIP.
 
-If uploads fail, check storage env vars and bucket CORS (if the browser loads presigned URLs directly; most R2/S3 setups work with HTTPS).
+If uploads fail, check your Railway logs and ensure the app can write to `public/uploads/` in the deployed environment.
 
 ---
 
@@ -128,7 +118,6 @@ In Railway: service → **Settings** → **Networking** → add a custom domain,
 ## Summary checklist
 
 - [ ] `DATABASE_URL` from Railway Postgres  
-- [ ] `STORAGE_URL`, `STORAGE_BUCKET`, `STORAGE_KEY`, `STORAGE_SECRET`  
 - [ ] `NEXTAUTH_URL`, `NEXTAUTH_SECRET`  
 - [ ] Deploy → `npm run build` / `npm start`  
 - [ ] (Optional) `npx prisma db seed` for demo content  

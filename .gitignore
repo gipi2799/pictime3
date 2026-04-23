@@ -33,8 +33,8 @@ yarn-error.log*
 /prisma/*.db-journal
 
 # uploads (generated at runtime; keep folder)
-/uploads/*
-!/uploads/.gitkeep
+/public/uploads/*
+!/public/uploads/.gitkeep
 
 # typescript
 *.tsbuildinfo
