@@ -55,11 +55,13 @@ async function ensureGalleryPhotos(galleryId: string, slug: string) {
       data: {
         id: photoId,
         galleryId,
+        filename: `photo-${i + 1}.jpg`,
         originalKey: processed.originalKey,
         thumbKey: processed.thumbKey,
         previewKey: processed.previewKey,
         width: processed.width,
         height: processed.height,
+        sortOrder: i,
       },
     });
   }
