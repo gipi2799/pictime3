@@ -67,6 +67,71 @@ async function ensureGalleryPhotos(galleryId: string, slug: string) {
   }
 }
 
+export async function GET() {
+  // Allow GET requests for easy browser access
+  try {
+    // Check if admin user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: DEMO_EMAIL },
+    });
+
+    if (existingUser) {
+      return NextResponse.json({
+        message: "Demo data already seeded",
+        user: { email: DEMO_EMAIL, password: DEMO_PASSWORD }
+      });
+    }
+
+    // Create admin user
+    const hashedPassword = await bcrypt.hash(DEMO_PASSWORD, 10);
+    const user = await prisma.user.create({
+      data: {
+        email: DEMO_EMAIL,
+        passwordHash: hashedPassword,
+        name: "Demo Admin",
+      },
+    });
+
+    // Create galleries
+    const galleries = [];
+    for (const galleryData of GALLERIES) {
+      const gallery = await prisma.gallery.create({
+        data: {
+          title: galleryData.title,
+          slug: galleryData.slug,
+          subtitle: galleryData.subtitle,
+          clientLabel: galleryData.clientLabel,
+          userId: user.id,
+        },
+      });
+      galleries.push(gallery);
+
+      // Add photos to gallery
+      await ensureGalleryPhotos(gallery.id, gallery.slug);
+    }
+
+    return NextResponse.json({
+      message: "Demo data seeded successfully",
+      user: {
+        email: DEMO_EMAIL,
+        password: DEMO_PASSWORD,
+      },
+      galleries: galleries.map(g => ({
+        title: g.title,
+        slug: g.slug,
+        url: `/gallery/${g.slug}`,
+      })),
+    });
+
+  } catch (error) {
+    console.error("Seeding error:", error);
+    return NextResponse.json(
+      { error: "Failed to seed demo data" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST() {
   try {
     // Check if admin user already exists
